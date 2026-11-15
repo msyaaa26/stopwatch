@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ストップウォッチ</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#1b1f24; --card:#fff; --accent:#2563eb; --muted:#6b7280; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1115; --fg:#e8eaed; --card:#181b21; --accent:#60a5fa; --muted:#9aa0a6; --line:#2a2f38; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--fg); font-family:-apple-system,"Hiragino Sans",sans-serif; padding:16px; }
+  main { width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+         border-radius:16px; padding:28px 20px; text-align:center; }
+  h1 { font-size:16px; margin:0 0 12px; color:var(--muted); font-weight:600; }
+  #time { font-size:clamp(40px,14vw,64px); font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:.02em; }
+  .row { display:flex; gap:10px; margin-top:20px; }
+  button { flex:1; font-size:16px; padding:14px 0; border-radius:10px; border:1px solid var(--line);
+           background:var(--card); color:var(--fg); cursor:pointer; }
+  button.main { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button:disabled { opacity:.4; cursor:default; }
+  ol { list-style:none; padding:0; margin:20px 0 0; max-height:200px; overflow:auto; text-align:left; font-variant-numeric:tabular-nums; }
+  li { display:flex; justify-content:space-between; padding:8px 4px; border-top:1px solid var(--line); }
+  li span:first-child { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ストップウォッチ</h1>
+  <div id="time" aria-live="off">00:00.00</div>
+  <div class="row">
+    <button class="main" id="go">スタート</button>
+    <button id="lap" disabled>ラップ</button>
+    <button id="reset" disabled>リセット</button>
+  </div>
+  <ol id="laps"></ol>
+</main>
+<script>
+(function () {
+  var elapsed = 0, startedAt = 0, timer = null, laps = [];
+  var $ = function (id) { return document.getElementById(id); };
+  function fmt(ms) {
+    var m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60, c = Math.floor(ms / 10) % 100;
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") + "." + String(c).padStart(2, "0");
+  }
+  function now() { return elapsed + (timer ? performance.now() - startedAt : 0); }
+  function render() { $("time").textContent = fmt(now()); }
+  function setButtons() {
+    $("go").textContent = timer ? "ストップ" : (elapsed ? "再開" : "スタート");
+    $("lap").disabled = !timer;
+    $("reset").disabled = !elapsed && !timer;
+  }
+  function toggle() {
+    if (timer) { elapsed = now(); clearInterval(timer); timer = null; }
+    else { startedAt = performance.now(); timer = setInterval(render, 30); }
+    render(); setButtons();
+  }
+  function lap() {
+    if (!timer) return;
+    var t = now(), prev = laps.length ? laps[laps.length - 1].total : 0;
+    laps.push({ total: t, split: t - prev });
+    var li = document.createElement("li");
+    li.innerHTML = "<span>ラップ " + laps.length + "</span><span>" + fmt(t - prev) + " / " + fmt(t) + "</span>";
+    $("laps").insertBefore(li, $("laps").firstChild);
+  }
+  function reset() {
+    clearInterval(timer); timer = null; elapsed = 0; laps = [];
+    $("laps").innerHTML = ""; render(); setButtons();
+  }
+  $("go").onclick = toggle; $("lap").onclick = lap; $("reset").onclick = reset;
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space") { e.preventDefault(); toggle(); }
+    else if (e.key === "l") lap();
+    else if (e.key === "r") reset();
+  });
+  render(); setButtons();
+})();
+</script>
+</body>
+</html>
